@@ -18,33 +18,21 @@ const platform = sdk.platform();
 const main = async () => {
   await platform.login({
     jwt: process.env.RINGCENTRAL_JWT_TOKEN,
+    access_token_ttl: 600,
   });
-  await platform.get('/restapi/v1.0/account/~/extension/~');
 
-  const auth = platform.auth();
-
-  // by default access token expires in 3600 seconds
-  // we make it expire in 1 second, just for **testing purpose**.
-  let tokenInfo = await auth.data();
-  tokenInfo.expire_time = undefined;
-  tokenInfo.expires_in = '1';
-  await auth.setData(tokenInfo);
-
-  // since token "expires", you will see token refresh call to /restapi/oauth/token
-  await waitFor({ interval: 1000 });
-  await platform.get('/restapi/v1.0/account/~/extension/~');
-
+  // disable token auto refresh
   platform.ensureLoggedIn = async () => null;
 
-  // by default access token expires in 3600 seconds
-  // we make it expire in 1 second, just for **testing purpose**.
-  tokenInfo = await auth.data();
-  tokenInfo.expire_time = undefined;
-  tokenInfo.expires_in = '1';
-  await auth.setData(tokenInfo);
+  await platform.get('/restapi/v1.0/account/~/extension/~');
 
-  // even token "expires", you will NOT see token refresh call to /restapi/oauth/token
-  await waitFor({ interval: 1000 });
+  // we can manage the token ourselves in our own way
+  setInterval(async () => {
+    await platform.refresh();
+  }, 1800000);
+
+  // wait for 2 hours
+  await waitFor({ interval: 7200000 });
   await platform.get('/restapi/v1.0/account/~/extension/~');
 };
 main();
