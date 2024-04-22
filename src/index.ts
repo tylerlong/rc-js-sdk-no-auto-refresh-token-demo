@@ -7,6 +7,7 @@ const sdk = new SDK({
   clientSecret: process.env.RINGCENTRAL_CLIENT_SECRET,
 });
 
+// we print all the HTTP requests
 const client = sdk.client();
 client.on(client.events.requestSuccess, (apiResponse) => {
   console.log(apiResponse.headers.get('rcrequestid'), apiResponse.url);
@@ -19,15 +20,30 @@ const main = async () => {
     jwt: process.env.RINGCENTRAL_JWT_TOKEN,
   });
   await platform.get('/restapi/v1.0/account/~/extension/~');
+
   const auth = platform.auth();
-  const tokenInfo = await auth.data();
 
   // by default access token expires in 3600 seconds
-  // we make it expire in 1 second, just for testing purpose.
+  // we make it expire in 1 second, just for **testing purpose**.
+  let tokenInfo = await auth.data();
   tokenInfo.expire_time = undefined;
-  tokenInfo.expires_in = '1'; // force token to be expired
+  tokenInfo.expires_in = '1';
   await auth.setData(tokenInfo);
 
+  // since token "expires", you will see token refresh call to /restapi/oauth/token
+  await waitFor({ interval: 1000 });
+  await platform.get('/restapi/v1.0/account/~/extension/~');
+
+  platform.ensureLoggedIn = async () => null;
+
+  // by default access token expires in 3600 seconds
+  // we make it expire in 1 second, just for **testing purpose**.
+  tokenInfo = await auth.data();
+  tokenInfo.expire_time = undefined;
+  tokenInfo.expires_in = '1';
+  await auth.setData(tokenInfo);
+
+  // even token "expires", you will NOT see token refresh call to /restapi/oauth/token
   await waitFor({ interval: 1000 });
   await platform.get('/restapi/v1.0/account/~/extension/~');
 };
